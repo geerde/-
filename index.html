@@ -1,0 +1,1424 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>荒野兽争</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#3a2e1e">
+<style>
+*{box-sizing:border-box;user-select:none;-webkit-tap-highlight-color:transparent;}
+html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#1a2a1f;font-family:'Courier New',monospace;color:#eee;}
+body{display:flex;justify-content:center;align-items:center;min-height:100vh;min-height:100dvh;padding:4px;}
+.app{width:100%;max-width:440px;height:100%;max-height:920px;background:#3a2e1e;border-radius:14px;padding:8px;display:flex;flex-direction:column;gap:6px;border:3px solid #b99b6b;box-shadow:0 6px 0 #1f160e;overflow:hidden;}
+.topbar{display:flex;gap:5px;align-items:center;}
+.topbar button{background:#b99b6b;border:none;border-bottom:3px solid #7a5e40;padding:6px 8px;border-radius:20px;font-weight:bold;font-size:0.75rem;cursor:pointer;font-family:inherit;color:#1e1a10;white-space:nowrap;}
+.topbar button:active{transform:translateY(2px);border-bottom-width:1px;}
+.turn-info{flex:1;text-align:center;color:#ffecb3;font-weight:bold;font-size:0.85rem;padding:5px;background:#6b4f32;border-radius:20px;border:2px solid #d9b382;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.player-row{display:flex;flex-direction:column;gap:3px;}
+.player-info{display:flex;justify-content:space-around;padding:4px 8px;border-radius:12px;font-size:0.78rem;font-weight:bold;border:2px solid #b99b6b;background:#4e3e2b;color:#f0e6c5;transition:0.2s;}
+.player-info .pname{color:#ffecb3;}
+.player-info.active{border-color:#ffd966;background:#5e4a32;box-shadow:0 0 10px #ffd96688;animation:frameGlow 1.4s ease-in-out infinite;}
+.player-info.active .pname{color:#fff3b0;text-shadow:0 0 6px #ffd966;}
+@keyframes frameGlow{0%,100%{box-shadow:0 0 8px #ffd96688;}50%{box-shadow:0 0 16px #ffd966cc;}}.hand-row{display:flex;gap:4px;overflow-x:auto;overflow-y:hidden;padding:4px;background:#2d2318;border-radius:10px;min-height:64px;scrollbar-width:none;}
+.hand-row::-webkit-scrollbar{display:none;}
+.card-mini{flex:0 0 auto;width:52px;height:58px;background:#f5e7c8;border:2px solid #8b6f4c;border-radius:6px;display:flex;flex-direction:column;justify-content:space-between;padding:2px;font-size:0.55rem;color:#1e1a10;font-weight:bold;cursor:pointer;box-shadow:0 2px 0 #6b4f32;overflow:hidden;}
+.card-mini.selected{background:#ffeaa0;border-color:#f0c000;box-shadow:0 0 0 2px #ffd966,0 2px 0 #6b4f32;}
+.card-mini .cname{font-size:0.6rem;text-align:center;line-height:1.05;}
+.card-mini .ccost{font-size:0.55rem;text-align:center;color:#7a3f1e;}
+.card-mini .cstats{display:flex;justify-content:space-around;font-size:0.5rem;}
+.card-mini.item-card{background:linear-gradient(145deg,#b88cff,#8b4fcf);border-color:#5a2b8f;color:#fff;box-shadow:0 2px 0 #3d1e63;}
+.card-mini.item-card.selected{background:linear-gradient(145deg,#d4b0ff,#a86fe8);border-color:#f0c000;box-shadow:0 0 0 2px #ffd966,0 2px 0 #3d1e63;}
+.card-mini.item-card .cname{color:#fff;}
+.card-mini.item-card .ccost{color:#ffe0a0;}
+.card-mini.item-card .cstats{color:#e0d0ff;font-size:0.45rem;line-height:1.1;}.board{display:grid;grid-template-columns:repeat(5,1fr);grid-template-rows:repeat(5,1fr);gap:3px;padding:5px;background:#5f4a32;border-radius:12px;border:3px solid #b99b6b;aspect-ratio:1/1;width:100%;margin:0 auto;box-shadow:inset 0 0 0 2px #3a2e1e;}
+.cell{background:#8a7a5e;border-radius:5px;display:flex;justify-content:center;align-items:center;cursor:pointer;position:relative;overflow:hidden;min-width:0;min-height:0;}
+.cell.own-zone{background:#7d8f6b;}
+.cell.enemy-zone{background:#9e6d5e;}
+.cell.selected{outline:3px solid #f0e68c;outline-offset:1px;z-index:2;}
+.cell.has-trap::before{content:'⚠️';position:absolute;bottom:1px;left:2px;font-size:0.8rem;z-index:3;text-shadow:0 0 3px #000;pointer-events:none;}
+.unit{width:100%;height:100%;display:flex;flex-direction:column;justify-content:center;align-items:center;border-radius:4px;padding:1px;position:relative;}
+.unit.p1{background:#1f4a1f;border:2px solid #7dff7d;box-shadow:0 0 4px #7dff7d88;}
+.unit.p2{background:#4a1f1f;border:2px solid #ff7d7d;box-shadow:0 0 4px #ff7d7d88;}
+.unit.can-act::after{content:'●';position:absolute;top:0;right:2px;color:#ffe066;font-size:0.65rem;line-height:1;text-shadow:0 0 4px #ffe066;animation:pulseDot 1s ease-in-out infinite;z-index:5;pointer-events:none;}
+@keyframes pulseDot{0%,100%{opacity:1;transform:scale(1);}50%{opacity:0.3;transform:scale(1.4);}}
+.unit.netted::before{content:'🕸️';position:absolute;top:0;left:2px;font-size:0.75rem;z-index:4;text-shadow:0 0 3px #000;pointer-events:none;}
+.unit.charge-ready::after{content:'🔴';position:absolute;top:0;right:2px;font-size:0.55rem;line-height:1;z-index:6;pointer-events:none;}
+.unit .uname{font-size:0.66rem;font-weight:bold;color:#fff;text-shadow:1px 1px 0 #000;line-height:1;letter-spacing:0.5px;}
+.unit .ustat{font-size:0.5rem;color:#ffd;background:#0008;padding:0 3px;border-radius:6px;margin-top:1px;white-space:nowrap;}
+.unit .ustat .hp{color:#ffb7b7;}
+.unit .ustat .atk{color:#ffd966;}.actions{display:flex;gap:4px;margin-top:2px;}
+.actions button{flex:1;background:#b99b6b;border:none;border-bottom:3px solid #7a5e40;padding:8px 2px;border-radius:20px;font-weight:bold;font-size:0.65rem;cursor:pointer;font-family:inherit;color:#1e1a10;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.actions button:active{transform:translateY(2px);border-bottom-width:1px;}
+.actions button:disabled{opacity:0.4;pointer-events:none;}
+.modal{position:fixed;inset:0;background:#000a;display:flex;justify-content:center;align-items:center;padding:20px;z-index:1000;}
+.modal.hidden{display:none;}
+.modal-content{background:#3a2e1e;border:3px solid #b99b6b;border-radius:14px;padding:16px;max-width:380px;width:100%;max-height:80vh;overflow-y:auto;color:#eee;}
+.modal-content h2{margin:0 0 10px;color:#ffecb3;font-size:1.1rem;text-align:center;}
+.modal-content p{margin:6px 0;font-size:0.82rem;line-height:1.5;}
+.modal-content button{display:block;margin:10px auto 0;background:#b99b6b;border:none;border-bottom:3px solid #7a5e40;padding:8px 24px;border-radius:20px;font-weight:bold;cursor:pointer;font-family:inherit;font-size:0.9rem;width:100%;}
+.dmg-float{position:absolute;top:2px;left:50%;transform:translateX(-50%);color:#ff5555;font-weight:bold;font-size:0.95rem;text-shadow:1px 1px 0 #000;pointer-events:none;animation:dmgFloat 0.9s ease-out forwards;z-index:100;}
+@keyframes dmgFloat{0%{transform:translate(-50%,0);opacity:1;}100%{transform:translate(-50%,-32px);opacity:0;}}
+@keyframes unitHit{0%,100%{transform:translateX(0);}25%{transform:translateX(-4px);filter:brightness(1.8);}50%{transform:translateX(4px);filter:brightness(1.8);}75%{transform:translateX(-2px);}}
+.unit.hit{animation:unitHit 0.3s ease-out;}
+@keyframes unitAttackR{0%,100%{transform:translateX(0);}50%{transform:translateX(6px);}}
+@keyframes unitAttackL{0%,100%{transform:translateX(0);}50%{transform:translateX(-6px);}}
+.unit.p1.attack-anim{animation:unitAttackR 0.25s ease-out;}
+.unit.p2.attack-anim{animation:unitAttackL 0.25s ease-out;}
+.item-hint{position:fixed;bottom:110px;left:50%;transform:translateX(-50%);background:#8b4fcf;color:#fff;padding:6px 16px;border-radius:20px;font-weight:bold;font-size:0.85rem;box-shadow:0 4px 12px rgba(0,0,0,0.5);z-index:500;pointer-events:none;display:none;}
+@media (max-height:760px){.board{gap:2px;padding:4px;}.unit .uname{font-size:0.58rem;}.card-mini{width:48px;height:54px;}}
+</style>
+</head><body>
+<div class="app">
+<div class="topbar">
+<button id="rulesBtn">📖</button>
+<button id="modeBtn">👥 双人</button>
+<div class="turn-info" id="turnInfo">玩家1 · 第1轮</div>
+<button id="restartBtn">↻</button>
+</div>
+<div class="player-row p2">
+<div class="player-info" id="p2Info">
+<span class="pname">玩家2</span>
+<span>❤️ <b id="p2Hp">10</b></span>
+<span>🦴 <b id="p2Bones">3</b></span>
+</div>
+<div class="hand-row" id="p2Hand"></div>
+</div>
+<div class="board" id="board"></div>
+<div class="player-row p1">
+<div class="hand-row" id="p1Hand"></div>
+<div class="player-info" id="p1Info">
+<span class="pname">玩家1</span>
+<span>❤️ <b id="p1Hp">10</b></span>
+<span>🦴 <b id="p1Bones">3</b></span>
+</div>
+</div>
+<div class="actions">
+<button id="drawBtn">🦴2 抽动物</button>
+<button id="itemDrawBtn">🦴3 抽道具</button>
+<button id="sacrificeBtn" disabled>献祭</button>
+<button id="endTurnBtn">结束</button>
+</div>
+</div><div class="modal hidden" id="rulesModal">
+<div class="modal-content">
+<h2>📖 规则</h2>
+<p><b>【基础】</b>5x5 棋盘，双方 10 血、3 骨头、3 手牌。</p>
+<p><b>【抽牌】</b>第 1 回合不抽。第 2 回合起每回合自动抽 2 张动物。手牌上限 10。</p>
+<p><b>【骨头】</b>打牌消耗。自己单位死亡 +1 骨头。松鼠/黑猫可献祭 +1 骨头。</p>
+<p><b>【道具】</b>🦴3 抽道具（紫卡）。使用道具额外 🦴1，用完回道具牌库。</p>
+<p><b>【行动】</b>第 1 回合只能上牌。之后每单位每回合可前进/攻击/打脸。击杀敌人后攻击者前进到其位置。</p>
+<p><b>【胜利】</b>对方血量归 0。</p>
+<button onclick="document.getElementById('rulesModal').classList.add('hidden')">关闭</button>
+</div>
+</div>
+<div class="modal hidden" id="modeModal">
+<div class="modal-content">
+<h2>选择模式</h2>
+<p style="text-align:center;color:#ccc;font-size:0.8rem;">切换会重新开始</p>
+<button data-mode="off" style="background:#b99b6b;">👥 双人</button>
+<button data-mode="easy" style="background:#4a9eff;color:#fff;">🤖 简单</button>
+<button data-mode="hard" style="background:#e05a5a;color:#fff;">🧠 困难</button>
+<button data-mode="cancel" style="background:#666;color:#fff;">取消</button>
+</div>
+</div>
+<div class="modal hidden" id="infoModal">
+<div class="modal-content">
+<h2 id="infoName"></h2>
+<p id="infoStats"></p>
+<p id="infoDesc"></p>
+<button onclick="document.getElementById('infoModal').classList.add('hidden')">关闭</button>
+</div>
+</div>
+<div class="item-hint" id="itemHint"></div><script>
+const ROWS=5,COLS=5,MAX_HAND=10,DEATH_BONES=1,SACRIFICE_BONES=1,EXTRA_DRAW_COST=2,ITEM_DRAW_COST=3,ITEM_USE_COST=1,DRAW_PER_TURN=2,INIT_HAND=3;
+
+const CARDS={
+WOLF:{name:'野狼',short:'野狼',cost:2,hp:3,atk:2},
+SMALL_WOLF:{name:'小狼',short:'小狼',cost:1,hp:2,atk:1},
+SQUIRREL:{name:'松鼠',short:'松鼠',cost:0,hp:1,atk:0,canSacrifice:true},
+BUG:{name:'臭虫',short:'臭虫',cost:0,hp:1,atk:1},
+BLACKCAT:{name:'黑猫',short:'黑猫',cost:2,hp:2,atk:1,canSacrifice:true,noDieOnSac:true},
+BISON:{name:'野牛',short:'野牛',cost:2,hp:3,atk:1,charge:true},
+HOUND:{name:'猎犬',short:'猎犬',cost:2,hp:2,atk:2,hound:true},
+GHOUL:{name:'食尸鬼',short:'食尸',cost:0,hp:1,atk:2,ghoul:true},
+BEAR:{name:'棕熊',short:'棕熊',cost:6,hp:8,atk:3},
+TURTLE:{name:'陆龟',short:'陆龟',cost:4,hp:8,atk:1},
+HEDGEHOG:{name:'刺猬',short:'刺猬',cost:3,hp:3,atk:1,thorn:1},
+QUEEN:{name:'蜂后',short:'蜂后',cost:5,hp:2,atk:0,summoner:true},
+VIPER:{name:'蝮蛇',short:'蝮蛇',cost:2,hp:2,atk:3},
+CRAB:{name:'螃蟹',short:'螃蟹',cost:2,hp:2,atk:1,sideMove:true},
+BIRD:{name:'飞鸟',short:'飞鸟',cost:2,hp:2,atk:1,range:2},
+MANTIS:{name:'螳螂',short:'螳螂',cost:2,hp:2,atk:1,doubleStrike:true}
+};
+
+const ITEM_CARDS={
+FENCE:{name:'栅栏',icon:'🚧',desc:'8血 阻挡'},
+GUN:{name:'猎枪',icon:'🔫',desc:'5点伤害'},
+MEDICINE:{name:'伤药',icon:'💊',desc:'回3血'},
+TRAP:{name:'陷阱',icon:'⚠️',desc:'踩到受2伤'},
+NET:{name:'捕网',icon:'🕸️',desc:'下回合不动'},
+BOMB:{name:'炸弹',icon:'💣',desc:'玩家-3血'},
+FEED:{name:'饲料',icon:'🌾',desc:'额外行动'},
+WHISTLE:{name:'哨笛',icon:'🎵',desc:'召回返骨头'},
+BALLOON:{name:'气球',icon:'🎈',desc:'空降动物'}
+};function makeDeck(){
+const d=[];
+const add=(t,n)=>{for(let i=0;i<n;i++)d.push({...CARDS[t],type:t});};
+add('WOLF',10);add('SQUIRREL',48);add('SMALL_WOLF',5);add('BUG',5);
+add('BLACKCAT',3);add('BISON',5);add('HOUND',5);add('GHOUL',5);
+add('BEAR',3);add('TURTLE',3);add('HEDGEHOG',5);add('QUEEN',3);
+add('VIPER',5);add('CRAB',5);add('BIRD',5);add('MANTIS',5);
+for(let i=d.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[d[i],d[j]]=[d[j],d[i]];}
+return d;
+}
+
+function makeItemDeck(){
+const d=[];
+const add=(k)=>{d.push({...ITEM_CARDS[k],itemKey:k,isItem:true});d.push({...ITEM_CARDS[k],itemKey:k,isItem:true});};
+add('FENCE');add('GUN');add('MEDICINE');add('TRAP');add('NET');
+add('BOMB');add('FEED');add('WHISTLE');add('BALLOON');
+for(let i=d.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[d[i],d[j]]=[d[j],d[i]];}
+return d;
+}let G=null;
+let AI_MODE='off';
+let AI_RUNNING=false;
+
+function initGame(){
+G={
+board:Array(ROWS).fill().map(()=>Array(COLS).fill(null)),
+players:{
+1:{hp:10,bones:3,deck:makeDeck(),itemDeck:makeItemDeck(),hand:[]},
+2:{hp:10,bones:3,deck:makeDeck(),itemDeck:makeItemDeck(),hand:[]}
+},
+turn:1,round:1,selHand:null,selItem:null,selUnit:null,
+itemPhase:null,itemExtra:null,traps:[],
+gameOver:false,winner:null
+};
+drawCards(1,INIT_HAND);
+drawCards(2,INIT_HAND);
+AI_RUNNING=false;
+render();
+}function drawCards(playerId,n){
+const p=G.players[playerId];
+let gained=0;
+for(let i=0;i<n;i++){
+if(p.deck.length===0)break;
+const card=p.deck.pop();
+if(p.hand.length>=MAX_HAND){p.bones+=1;}
+else{p.hand.push(card);gained++;}
+}
+return gained;
+}
+
+function playCard(playerId,handIdx,row){
+if(G.gameOver||G.turn!==playerId)return false;
+const p=G.players[playerId];
+if(handIdx===null||handIdx<0||handIdx>=p.hand.length)return false;
+const card=p.hand[handIdx];
+if(card.isItem)return false;
+if(p.bones<card.cost)return false;
+const col=playerId===1?0:4;
+if(G.board[row][col]!==null)return false;
+p.bones-=card.cost;
+p.hand.splice(handIdx,1);
+const unit={
+owner:playerId,card:{...card},hp:card.hp,atk:card.atk,type:card.type,hasMoved:false,
+chargeReady:card.charge?true:false,
+hasSummoned:false
+};
+G.board[row][col]=unit;
+G.selHand=null;
+render();
+return true;
+}function extraDraw(playerId){
+if(G.gameOver||G.turn!==playerId)return false;
+const p=G.players[playerId];
+if(p.bones<EXTRA_DRAW_COST)return false;
+p.bones-=EXTRA_DRAW_COST;
+if(p.deck.length===0)return false;
+const card=p.deck.pop();
+if(p.hand.length>=MAX_HAND)p.bones+=1;
+else p.hand.push(card);
+render();
+return true;
+}
+
+function itemDraw(playerId){
+if(G.gameOver||G.turn!==playerId)return false;
+const p=G.players[playerId];
+if(p.bones<ITEM_DRAW_COST)return false;
+p.bones-=ITEM_DRAW_COST;
+if(!p.itemDeck||p.itemDeck.length===0)p.itemDeck=makeItemDeck();
+const card=p.itemDeck.pop();
+if(p.hand.length>=MAX_HAND)p.bones+=1;
+else p.hand.push(card);
+render();
+return true;
+}function sacrifice(row,col){
+if(G.gameOver)return false;
+const playerId=G.turn;
+const unit=G.board[row][col];
+if(!unit||unit.owner!==playerId)return false;
+if(!unit.card.canSacrifice)return false;
+if(unit.card.noDieOnSac){
+unit.hasMoved=true;
+G.players[playerId].bones+=SACRIFICE_BONES;
+G.selUnit=null;
+render();
+return true;
+}
+G.board[row][col]=null;
+G.players[playerId].bones+=SACRIFICE_BONES;
+triggerGhouls(playerId,row,col);
+G.selUnit=null;
+render();
+return true;
+}
+
+function triggerGhouls(playerId,row,col){
+if(G.board[row][col]!==null)return;
+const p=G.players[playerId];
+for(let i=p.hand.length-1;i>=0;i--){
+const c=p.hand[i];
+if(c.type==='GHOUL'){
+if(G.board[row][col]!==null)break;
+G.board[row][col]={
+owner:playerId,card:{...c},hp:c.hp,atk:c.atk,type:c.type,hasMoved:true
+};
+p.hand.splice(i,1);
+}
+}
+}function moveUnit(row,col,dr,dc){
+if(G.gameOver)return false;
+const playerId=G.turn;
+const unit=G.board[row][col];
+if(!unit||unit.owner!==playerId||unit.hasMoved)return false;
+if(unit.netted)return false;
+if(unit.isFence)return false;
+if(G.round===1)return false;
+if(unit.card&&unit.card.doubleStrike){
+if(Math.abs(dr)!==1)return false;
+const fdc=playerId===1?1:-1;
+if(dc!==fdc)return false;
+}
+const nr=row+dr,nc=col+dc;
+if(nr<0||nr>=ROWS||nc<0||nc>=COLS)return false;
+if(G.board[nr][nc]!==null)return false;
+if(playerId===1&&nc===4)return false;
+if(playerId===2&&nc===0)return false;
+if(!unit.card.sideMove){
+const forward=playerId===1?1:-1;
+if(dc!==0&&dc!==forward)return false;
+if(dr!==0&&dc===0)return false;
+}
+G.board[nr][nc]=unit;
+G.board[row][col]=null;
+unit.hasMoved=true;
+G.selUnit=null;
+const ti=G.traps.findIndex(t=>t.row===nr&&t.col===nc&&t.owner!==playerId);
+if(ti>=0){
+unit.hp-=2;
+G.traps.splice(ti,1);
+if(unit.hp<=0){
+G.board[nr][nc]=null;
+if(!unit.isFence)G.players[unit.owner].bones+=DEATH_BONES;
+triggerGhouls(unit.owner,nr,nc);
+}
+}
+render();
+return true;
+}function bisonCharge(row,col){
+if(G.gameOver)return false;
+const playerId=G.turn;
+const unit=G.board[row][col];
+if(!unit||unit.owner!==playerId||unit.hasMoved)return false;
+if(unit.type!=='BISON'||!unit.chargeReady)return false;
+if(G.round===1)return false;
+const dc=playerId===1?1:-1;
+const nr1=row,nc1=col+dc;
+const nr2=row,nc2=col+dc*2;
+if(nc1<0||nc1>=COLS)return false;
+if(playerId===1&&nc1===4)return false;
+if(playerId===2&&nc1===0)return false;
+
+const first=G.board[nr1][nc1];
+
+// 情况1：前方1格有敌人
+if(first&&first.owner!==playerId){
+first.hp-=2;
+if(first.hp<=0){
+// 击杀 → 移动到敌人位置
+G.board[nr1][nc1]=unit;
+G.board[row][col]=null;
+if(!first.isFence)G.players[first.owner].bones+=DEATH_BONES;
+triggerGhouls(first.owner,nr1,nc1);
+}else{
+// 没击杀 → 尝试击退
+const nc3=nc1+dc;
+const canKnock=(nc3>=0&&nc3<COLS&&G.board[nr1][nc3]===null&&
+(playerId===1?nc3!==4:nc3!==0));
+if(canKnock){
+G.board[nr1][nc3]=first;
+G.board[nr1][nc1]=null;
+}
+// 击退位被占 → 敌人原地不动（2伤已造成）
+}
+unit.chargeReady=false;
+unit.hasMoved=true;
+render();
+return true;
+}
+
+// 前方1格必须是空的才能冲2格
+if(first!==null)return false;
+if(nc2<0||nc2>=COLS)return false;
+if(playerId===1&&nc2===4)return false;
+if(playerId===2&&nc2===0)return false;
+
+const second=G.board[nr2][nc2];
+
+// 情况2：2格有敌人
+if(second&&second.owner!==playerId){
+second.hp-=2;
+G.board[row][col]=null;
+G.board[nr1][nc1]=unit;
+if(second.hp<=0){
+// 击杀 → 到2格
+G.board[nr1][nc1]=null;
+G.board[nr2][nc2]=unit;
+if(!second.isFence)G.players[second.owner].bones+=DEATH_BONES;
+triggerGhouls(second.owner,nr2,nc2);
+}else{
+// 没击杀 → 尝试击退
+const nc3=nc2+dc;
+const canKnock=(nc3>=0&&nc3<COLS&&G.board[nr2][nc3]===null&&
+(playerId===1?nc3!==4:nc3!==0));
+if(canKnock){
+G.board[nr2][nc3]=second;
+G.board[nr2][nc2]=null;
+}
+}
+unit.chargeReady=false;
+unit.hasMoved=true;
+render();
+return true;
+}
+
+// 情况3：2格全空 → 前进2格
+G.board[row][col]=null;
+G.board[nr2][nc2]=unit;
+unit.chargeReady=false;
+unit.hasMoved=true;
+render();
+return true;
+}function attackUnit(ar,ac,tr,tc){
+if(G.gameOver)return false;
+const playerId=G.turn;
+const attacker=G.board[ar][ac];
+if(!attacker||attacker.owner!==playerId||attacker.hasMoved)return false;
+if(attacker.netted)return false;
+if(G.round===1)return false;
+const target=G.board[tr][tc];
+if(!target||target.owner===playerId)return false;
+const dc=playerId===1?1:-1;
+if(attacker.card.doubleStrike){
+if(Math.abs(tr-ar)!==1||tc!==ac+dc)return false;
+const otherR=(tr===ar-1)?ar+1:ar-1;
+const otherC=ac+dc;
+const other=(otherR>=0&&otherR<ROWS&&otherC>=0&&otherC<COLS)?G.board[otherR][otherC]:null;
+target.hp-=1;
+doAttackAnimation(ar,ac,tr,tc,1);
+if(target.card&&target.card.thorn){attacker.hp-=target.card.thorn;}
+if(other&&other.owner!==playerId){
+other.hp-=1;
+if(other.card&&other.card.thorn){attacker.hp-=other.card.thorn;}
+if(other.hp<=0){
+G.board[otherR][otherC]=null;
+if(!other.isFence)G.players[other.owner].bones+=DEATH_BONES;
+triggerGhouls(other.owner,otherR,otherC);
+}
+}
+if(target.hp<=0){
+G.board[tr][tc]=null;
+if(!target.isFence)G.players[target.owner].bones+=DEATH_BONES;
+triggerGhouls(target.owner,tr,tc);
+}
+attacker.hasMoved=true;
+G.selUnit=null;
+if(attacker.hp<=0){G.board[ar][ac]=null;G.players[playerId].bones+=DEATH_BONES;}
+setTimeout(()=>render(),260);
+return true;
+}if(attacker.card.sideMove){
+const forward=(tr===ar&&tc===ac+dc);
+const sideUp=(tr===ar-1&&tc===ac);
+const sideDown=(tr===ar+1&&tc===ac);
+if(!forward&&!sideUp&&!sideDown)return false;
+let dmg=attacker.atk;
+target.hp-=dmg;
+doAttackAnimation(ar,ac,tr,tc,dmg);
+if(target.card&&target.card.thorn&&dmg>0)attacker.hp-=target.card.thorn;
+if(target.hp<=0){
+G.board[tr][tc]=null;
+if(!target.isFence)G.players[target.owner].bones+=DEATH_BONES;
+triggerGhouls(target.owner,tr,tc);
+const isOppZone=(playerId===1&&tc===4)||(playerId===2&&tc===0);
+if(!isOppZone){
+G.board[tr][tc]=attacker;
+G.board[ar][ac]=null;
+}
+}
+attacker.hasMoved=true;
+G.selUnit=null;
+if(attacker.hp<=0){G.board[ar][ac]=null;G.players[playerId].bones+=DEATH_BONES;}
+setTimeout(()=>render(),260);
+return true;
+}const dist=attacker.card.range||1;
+if(tr!==ar)return false;
+if(dist===2){
+if(tc!==ac+dc&&tc!==ac+dc*2)return false;
+}else{
+if(tc!==ac+dc*dist)return false;
+}
+let dmg=attacker.atk;
+target.hp-=dmg;
+if(attacker.card.hound&&target.hp<=0){
+G.board[tr][tc]=null;
+G.players[playerId].bones+=DEATH_BONES;
+triggerGhouls(target.owner,tr,tc);
+attacker.hasMoved=true;
+G.selUnit=null;
+doAttackAnimation(ar,ac,tr,tc,dmg);
+const isOppZone=(playerId===1&&tc===4)||(playerId===2&&tc===0);
+if(!isOppZone){G.board[tr][tc]=attacker;G.board[ar][ac]=null;}
+setTimeout(()=>render(),260);
+return true;
+}
+if(target.card&&target.card.thorn&&dmg>0){
+attacker.hp-=target.card.thorn;
+}
+doAttackAnimation(ar,ac,tr,tc,dmg);
+if(target.hp<=0){
+G.board[tr][tc]=null;
+if(!target.isFence)G.players[target.owner].bones+=DEATH_BONES;
+triggerGhouls(target.owner,tr,tc);
+const isOppZone=(playerId===1&&tc===4)||(playerId===2&&tc===0);
+if(!isOppZone){G.board[tr][tc]=attacker;G.board[ar][ac]=null;}
+}
+attacker.hasMoved=true;
+G.selUnit=null;
+if(attacker.hp<=0){G.board[ar][ac]=null;G.players[playerId].bones+=DEATH_BONES;}
+setTimeout(()=>render(),260);
+return true;
+}function attackPlayer(ar,ac){
+if(G.gameOver)return false;
+const playerId=G.turn;
+const attacker=G.board[ar][ac];
+if(!attacker||attacker.owner!==playerId||attacker.hasMoved)return false;
+if(attacker.netted)return false;
+if(G.round===1)return false;
+if(attacker.card&&attacker.card.doubleStrike){
+if(playerId===1){
+if(ac!==3)return false;
+const upL=(ar-1>=0)?G.board[ar-1][4]:null;
+const upR=(ar+1<ROWS)?G.board[ar+1][4]:null;
+if(upL!==null&&upR!==null)return false;
+}else{
+if(ac!==1)return false;
+const upL=(ar-1>=0)?G.board[ar-1][0]:null;
+const upR=(ar+1<ROWS)?G.board[ar+1][0]:null;
+if(upL!==null&&upR!==null)return false;
+}
+const enemy=playerId===1?2:1;
+G.players[enemy].hp-=attacker.atk;
+if(G.players[enemy].hp<=0){G.players[enemy].hp=0;G.gameOver=true;G.winner=playerId;}
+attacker.hasMoved=true;
+G.selUnit=null;
+doAttackAnimation(ar,ac,ar,ac,attacker.atk);
+setTimeout(()=>render(),260);
+return true;
+}
+const dist=attacker.card.range||1;
+if(dist===2){
+if(playerId===1&&ac===2&&G.board[ar][4]===null){
+G.players[2].hp-=attacker.atk;
+if(G.players[2].hp<=0){G.players[2].hp=0;G.gameOver=true;G.winner=1;}
+attacker.hasMoved=true;G.selUnit=null;
+doAttackAnimation(ar,ac,ar,ac,attacker.atk);
+setTimeout(()=>render(),260);
+return true;
+}
+if(playerId===2&&ac===2&&G.board[ar][0]===null){
+G.players[1].hp-=attacker.atk;
+if(G.players[1].hp<=0){G.players[1].hp=0;G.gameOver=true;G.winner=2;}
+attacker.hasMoved=true;G.selUnit=null;
+doAttackAnimation(ar,ac,ar,ac,attacker.atk);
+setTimeout(()=>render(),260);
+return true;
+}
+return false;
+}
+let ok=false;
+if(playerId===1){
+if(ac===3&&G.board[ar][4]===null){
+G.players[2].hp-=attacker.atk;
+if(G.players[2].hp<=0){G.players[2].hp=0;G.gameOver=true;G.winner=1;}
+ok=true;
+}
+}else{
+if(ac===1&&G.board[ar][0]===null){
+G.players[1].hp-=attacker.atk;
+if(G.players[1].hp<=0){G.players[1].hp=0;G.gameOver=true;G.winner=2;}
+ok=true;
+}
+}
+if(ok){
+attacker.hasMoved=true;G.selUnit=null;
+doAttackAnimation(ar,ac,ar,ac,attacker.atk);
+setTimeout(()=>render(),260);
+}
+return ok;
+}function endTurn(){
+if(G.gameOver)return;
+const prevTurn=G.turn;
+if(prevTurn===1){
+for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
+const u=G.board[r][c];
+if(u&&u.owner===2&&u.netted)u.netted=false;
+}
+}else{
+for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
+const u=G.board[r][c];
+if(u&&u.owner===1&&u.netted)u.netted=false;
+}
+}
+if(G.turn===1){G.turn=2;}else{G.turn=1;G.round++;}
+for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
+if(G.board[r][c]){
+G.board[r][c].hasMoved=false;
+G.board[r][c].hasSummoned=false;
+}
+}
+G.selHand=null;G.selItem=null;G.selUnit=null;G.itemPhase=null;
+if(G.round>=2)drawCards(G.turn,DRAW_PER_TURN);
+summonQueen(G.turn);
+render();
+}
+
+function summonQueen(playerId){
+for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
+const u=G.board[r][c];
+if(!u||u.owner!==playerId||u.type!=='QUEEN')continue;
+if(u.hasSummoned)continue;
+const dc=playerId===1?1:-1;
+const candidates=[[r,c+dc],[r-1,c],[r+1,c]];
+for(const [nr,nc] of candidates){
+if(nr<0||nr>=ROWS||nc<0||nc>=COLS)continue;
+if(G.board[nr][nc]!==null)continue;
+if(playerId===1&&nc===4)continue;
+if(playerId===2&&nc===0)continue;
+G.board[nr][nc]={owner:playerId,card:{name:'工蜂',short:'工蜂',cost:0,hp:1,atk:1},hp:1,atk:1,type:'BEE',hasMoved:true,isBee:true};
+u.hasSummoned=true;
+break;
+}
+}
+}function consumeItem(playerId,handIdx,card){
+const p=G.players[playerId];
+p.hand.splice(handIdx,1);
+p.itemDeck.push({...ITEM_CARDS[card.itemKey],itemKey:card.itemKey,isItem:true});
+}
+
+function applyItemInstant(playerId,handIdx){
+const p=G.players[playerId];
+const card=p.hand[handIdx];
+if(!card||!card.isItem)return false;
+if(p.bones<ITEM_USE_COST)return false;
+if(card.itemKey==='MEDICINE'){
+p.bones-=ITEM_USE_COST;
+p.hp=Math.min(10,p.hp+3);
+consumeItem(playerId,handIdx,card);
+render();return true;
+}
+if(card.itemKey==='BOMB'){
+p.bones-=ITEM_USE_COST;
+const enemy=playerId===1?2:1;
+G.players[enemy].hp=Math.max(0,G.players[enemy].hp-3);
+if(G.players[enemy].hp<=0){G.gameOver=true;G.winner=playerId;}
+consumeItem(playerId,handIdx,card);
+render();return true;
+}
+return false;
+}function applyItemTarget(playerId,handIdx,r,c){
+const p=G.players[playerId];
+const card=p.hand[handIdx];
+if(!card||!card.isItem)return false;
+if(p.bones<ITEM_USE_COST)return false;
+const key=card.itemKey;
+if(key==='FENCE'){
+const zoneCol=playerId===1?0:4;
+if(c!==zoneCol)return false;
+if(G.board[r][c]!==null)return false;
+p.bones-=ITEM_USE_COST;
+G.board[r][c]={owner:playerId,card:{name:'栅栏',short:'栅栏',cost:0,hp:8,atk:0,icon:'🚧'},hp:8,atk:0,type:'FENCE',hasMoved:true,isFence:true};
+consumeItem(playerId,handIdx,card);
+render();return true;
+}
+if(key==='GUN'){
+const u=G.board[r][c];
+if(!u)return false;
+p.bones-=ITEM_USE_COST;
+u.hp-=5;
+if(u.hp<=0){
+G.board[r][c]=null;
+if(!u.isFence)G.players[u.owner].bones+=DEATH_BONES;
+triggerGhouls(u.owner,r,c);
+}
+consumeItem(playerId,handIdx,card);
+render();return true;
+}
+if(key==='TRAP'){
+if(G.board[r][c]!==null)return false;
+if(G.traps.some(t=>t.row===r&&t.col===c))return false;
+p.bones-=ITEM_USE_COST;
+G.traps.push({row:r,col:c,owner:playerId});
+consumeItem(playerId,handIdx,card);
+render();return true;
+}
+if(key==='NET'){
+const u=G.board[r][c];
+if(!u||u.owner===playerId)return false;
+p.bones-=ITEM_USE_COST;
+u.netted=true;
+consumeItem(playerId,handIdx,card);
+render();return true;
+}if(key==='FEED'){
+const u=G.board[r][c];
+if(!u||u.owner!==playerId||u.isFence)return false;
+p.bones-=ITEM_USE_COST;
+u.hasMoved=false;
+consumeItem(playerId,handIdx,card);
+render();return true;
+}
+if(key==='WHISTLE'){
+const u=G.board[r][c];
+if(!u||u.owner!==playerId||u.isFence)return false;
+p.bones-=ITEM_USE_COST;
+p.bones+=(u.card.cost||0);
+if(p.hand.length<MAX_HAND){
+p.hand.push({...u.card,hp:u.card.hp,atk:u.card.atk});
+}else{
+p.bones+=1;
+}
+G.board[r][c]=null;
+consumeItem(playerId,handIdx,card);
+render();return true;
+}
+return false;
+}
+
+function applyBalloon(playerId,itemIdx,animalIdx,r,c){
+const p=G.players[playerId];
+const animal=p.hand[animalIdx];
+const item=p.hand[itemIdx];
+if(!animal||animal.isItem||!item||!item.isItem)return false;
+if(p.bones<ITEM_USE_COST+animal.cost)return false;
+p.bones-=(ITEM_USE_COST+animal.cost);
+G.board[r][c]={owner:playerId,card:{...animal},hp:animal.hp,atk:animal.atk,type:animal.type,hasMoved:false,chargeReady:animal.charge?true:false};
+const idxs=[itemIdx,animalIdx].sort((a,b)=>b-a);
+p.itemDeck.push({...ITEM_CARDS[item.itemKey],itemKey:item.itemKey,isItem:true});
+for(const i of idxs)p.hand.splice(i,1);
+return true;
+}let longPressTimer=null,longPressJustTriggered=false;
+function attachLongPress(el,unit){
+const start=()=>{longPressJustTriggered=false;longPressTimer=setTimeout(()=>{longPressJustTriggered=true;showUnitInfo(unit);longPressTimer=null;},500);};
+const cancel=()=>{if(longPressTimer){clearTimeout(longPressTimer);longPressTimer=null;}};
+el.addEventListener('touchstart',start,{passive:true});
+el.addEventListener('touchend',cancel);
+el.addEventListener('touchmove',cancel);
+el.addEventListener('touchcancel',cancel);
+el.addEventListener('mousedown',start);
+el.addEventListener('mouseup',cancel);
+el.addEventListener('mouseleave',cancel);
+}
+
+function showUnitInfo(unit){
+document.getElementById('infoName').textContent=unit.card.name;
+document.getElementById('infoStats').textContent='❤ '+unit.hp+'/'+(unit.card.hp||'-')+'  ⚔ '+unit.atk;
+let d='';
+if(unit.isFence)d='栅栏：阻挡，无法移动和攻击。';
+else if(unit.isBee)d='工蜂：蜂后召唤。';
+else if(unit.type==='BLACKCAT')d='黑猫：每回合可献祭获得骨头，不死留场。';
+else if(unit.type==='BISON')d='野牛：双击自己触发冲撞（前进最多2格+前方2伤），限1次。';
+else if(unit.type==='HOUND')d='猎犬：击杀的动物骨头归我方。';
+else if(unit.type==='GHOUL')d='食尸鬼：我方动物阵亡时自动上场。';
+else if(unit.type==='HEDGEHOG')d='刺猬：受伤反伤1点。';
+else if(unit.type==='QUEEN')d='蜂后：每回合召唤工蜂。';
+else if(unit.type==='CRAB')d='螃蟹：可横向移动，可侧向攻击。';
+else if(unit.type==='BIRD')d='飞鸟：攻击距离2，可越过1只单位。';
+else if(unit.type==='MANTIS')d='螳螂：斜向移动/攻击。';
+else if(unit.card.canSacrifice)d='松鼠：可献祭获得骨头。';
+document.getElementById('infoDesc').textContent=d;
+document.getElementById('infoModal').classList.remove('hidden');
+}let handLPTimer=null;
+function attachHandLongPress(cardEl,card){
+const start=()=>{
+handLPTimer=setTimeout(()=>{
+document.getElementById('infoName').textContent=card.name;
+if(card.isItem){
+document.getElementById('infoStats').textContent='道具 · 使用需 🦴1';
+document.getElementById('infoDesc').textContent=card.desc;
+}else{
+document.getElementById('infoStats').textContent='费用 🦴'+card.cost+'  ❤'+card.hp+'  ⚔'+card.atk;
+let d='';
+if(card.type==='BLACKCAT')d='黑猫：每回合可献祭获得骨头，不死留场。';
+else if(card.type==='BISON')d='野牛：双击自己触发冲撞（前进最多2格+前方2伤），限1次。';
+else if(card.type==='HOUND')d='猎犬：击杀的动物骨头归我方。';
+else if(card.type==='GHOUL')d='食尸鬼：我方动物阵亡时自动上场。';
+else if(card.type==='HEDGEHOG')d='刺猬：受伤反伤1点。';
+else if(card.type==='QUEEN')d='蜂后：每回合召唤工蜂。';
+else if(card.type==='CRAB')d='螃蟹：可横向移动，可侧向攻击。';
+else if(card.type==='BIRD')d='飞鸟：攻击距离2，可越过1只单位。';
+else if(card.type==='MANTIS')d='螳螂：斜向移动/攻击。';
+else if(card.canSacrifice)d='松鼠：可献祭获得骨头。';
+else if(card.type==='WOLF')d='野狼：基础强力单位。';
+else if(card.type==='SMALL_WOLF')d='小狼：灵活上场。';
+else if(card.type==='BUG')d='臭虫：快速上场。';
+document.getElementById('infoDesc').textContent=d;
+}
+document.getElementById('infoModal').classList.remove('hidden');
+handLPTimer=null;
+},500);
+};
+const cancel=()=>{if(handLPTimer){clearTimeout(handLPTimer);handLPTimer=null;}};
+cardEl.addEventListener('touchstart',start,{passive:true});
+cardEl.addEventListener('touchend',cancel);
+cardEl.addEventListener('touchmove',cancel);
+cardEl.addEventListener('touchcancel',cancel);
+cardEl.addEventListener('mousedown',start);
+cardEl.addEventListener('mouseup',cancel);
+cardEl.addEventListener('mouseleave',cancel);
+}
+
+function doAttackAnimation(ar,ac,tr,tc,dmg){
+const el=document.getElementById('board');
+const a=el.children[dispIndex(ar,ac)],t=el.children[dispIndex(tr,tc)];
+if(a){const u=a.querySelector('.unit');if(u)u.classList.add('attack-anim');}
+if(t){
+const u=t.querySelector('.unit');
+if(u){setTimeout(()=>u.classList.add('hit'),60);}
+const f=document.createElement('div');
+f.className='dmg-float';f.textContent='-'+dmg;t.appendChild(f);setTimeout(()=>f.remove(),900);
+}
+}
+
+function dispIndex(row,col){const dr=4-col,dc=row;return dr*COLS+dc;}
+function dispToLogic(dr,dc){return{row:dc,col:4-dr};}
+function showHint(text){const e=document.getElementById('itemHint');e.textContent=text;e.style.display='block';}
+function hideHint(){document.getElementById('itemHint').style.display='none';}function handleCellClick(r,c){
+if(G.gameOver)return;
+if(longPressJustTriggered){longPressJustTriggered=false;return;}
+const playerId=G.turn;
+if(G.itemPhase==='balloonTarget'){
+if(G.board[r][c]!==null)return;
+if(applyBalloon(playerId,G.selItem,G.itemExtra,r,c)){
+G.itemPhase=null;G.selItem=null;G.itemExtra=null;G.selHand=null;hideHint();render();
+}
+return;
+}
+if(G.itemPhase==='pickTarget'){
+if(applyItemTarget(playerId,G.selItem,r,c)){
+G.itemPhase=null;G.selItem=null;G.selHand=null;hideHint();render();
+}
+return;
+}
+const clicked=G.board[r][c];
+if(G.selHand!==null){
+const targetCol=playerId===1?0:4;
+if(c===targetCol&&!clicked){playCard(playerId,G.selHand,r);return;}
+}
+if(clicked&&clicked.owner===playerId){
+if(G.selUnit&&G.selUnit.row===r&&G.selUnit.col===c){
+if(clicked.type==='BISON'&&clicked.chargeReady&&!clicked.hasMoved&&G.round>=2){
+bisonCharge(r,c);return;
+}
+G.selUnit=null;
+}else{G.selUnit={row:r,col:c};}
+G.selHand=null;render();return;
+}
+if(clicked&&clicked.owner!==playerId&&G.selUnit){attackUnit(G.selUnit.row,G.selUnit.col,r,c);return;}
+if(!clicked&&G.selUnit){
+const a=G.board[G.selUnit.row][G.selUnit.col];
+if(!a||a.owner!==playerId)return;
+const dc=playerId===1?1:-1;
+if(a.card.doubleStrike){
+if(playerId===1&&c===4&&Math.abs(r-G.selUnit.row)===1){
+if(attackPlayer(G.selUnit.row,G.selUnit.col))return;
+}
+if(playerId===2&&c===0&&Math.abs(r-G.selUnit.row)===1){
+if(attackPlayer(G.selUnit.row,G.selUnit.col))return;
+}
+if(Math.abs(r-G.selUnit.row)===1&&c-G.selUnit.col===dc){
+moveUnit(G.selUnit.row,G.selUnit.col,r-G.selUnit.row,dc);
+return;
+}
+}
+if(a.card.range===2){
+if(playerId===1&&c===4&&r===G.selUnit.row){attackPlayer(G.selUnit.row,G.selUnit.col);return;}
+if(playerId===2&&c===0&&r===G.selUnit.row){attackPlayer(G.selUnit.row,G.selUnit.col);return;}
+}
+if(playerId===1&&c===4&&r===G.selUnit.row){attackPlayer(G.selUnit.row,G.selUnit.col);return;}
+if(playerId===2&&c===0&&r===G.selUnit.row){attackPlayer(G.selUnit.row,G.selUnit.col);return;}
+const dr=r-G.selUnit.row,dc2=c-G.selUnit.col;
+if(a.card.sideMove){
+if(dr===0&&Math.abs(dc2)===1)moveUnit(G.selUnit.row,G.selUnit.col,0,dc2);
+else if(dr!==0&&dc2===0)moveUnit(G.selUnit.row,G.selUnit.col,dr,0);
+return;
+}
+if(dr===0&&dc2===dc)moveUnit(G.selUnit.row,G.selUnit.col,0,dc);
+}
+}function render(){renderBoard();renderHands();renderStats();renderTurnInfo();renderButtons();}
+
+function renderBoard(){
+const el=document.getElementById('board');el.innerHTML='';
+for(let dr=0;dr<ROWS;dr++){
+for(let dc=0;dc<COLS;dc++){
+const L=dispToLogic(dr,dc);
+const cell=document.createElement('div');cell.className='cell';
+if(L.col===0)cell.classList.add('own-zone');
+else if(L.col===4)cell.classList.add('enemy-zone');
+if(G.selUnit&&G.selUnit.row===L.row&&G.selUnit.col===L.col)cell.classList.add('selected');
+if(G.traps&&G.traps.some(t=>t.row===L.row&&t.col===L.col))cell.classList.add('has-trap');
+const unit=G.board[L.row][L.col];
+if(unit){
+const u=document.createElement('div');
+u.className='unit p'+unit.owner;
+u.innerHTML='<div class="uname">'+(unit.card.short||unit.card.name)+'</div><div class="ustat"><span class="hp">'+unit.hp+'</span>❤<span class="atk">'+unit.atk+'</span>⚔</div>';
+const canAct=!G.gameOver&&G.round>=2&&unit.owner===G.turn&&!unit.hasMoved&&!unit.netted;
+if(canAct)u.classList.add('can-act');
+if(unit.netted)u.classList.add('netted');
+if(unit.type==='BISON'&&unit.chargeReady&&!unit.hasMoved)u.classList.add('charge-ready');
+cell.appendChild(u);
+attachLongPress(cell,unit);
+}
+cell.addEventListener('click',()=>handleCellClick(L.row,L.col));
+el.appendChild(cell);
+}
+}
+}function renderHands(){
+for(const pid of [1,2]){
+const h=G.players[pid].hand;
+const animals=h.filter(c=>!c.isItem),items=h.filter(c=>c.isItem);
+h.length=0;h.push(...animals,...items);
+const el=document.getElementById('p'+pid+'Hand');el.innerHTML='';
+h.forEach((card,idx)=>{
+const c=document.createElement('div');
+c.className='card-mini';
+if(card.isItem)c.classList.add('item-card');
+if(G.turn===pid&&G.selHand===idx&&!card.isItem)c.classList.add('selected');
+if(card.isItem){
+c.innerHTML='<div class="cname">'+card.icon+' '+card.name+'</div><div class="ccost">🦴1</div><div class="cstats">'+card.desc+'</div>';
+}else{
+c.innerHTML='<div class="cname">'+card.short+'</div><div class="ccost">🦴'+card.cost+'</div><div class="cstats"><span>❤'+card.hp+'</span><span>⚔'+card.atk+'</span></div>';
+}
+attachHandLongPress(c,card);
+c.addEventListener('click',()=>{
+if(G.turn!==pid||G.gameOver)return;
+if(card.isItem){
+if(applyItemInstant(pid,idx))return;
+if(card.itemKey==='BALLOON'){
+G.selItem=idx;G.itemPhase='balloonAnimal';G.selHand=null;
+showHint('选一张手牌动物');render();return;
+}
+G.selItem=idx;G.itemPhase='pickTarget';G.selHand=null;
+const tips={FENCE:'点自己上牌区空格',GUN:'点场上动物',TRAP:'点场上空格',NET:'点敌方动物',FEED:'点自己动物',WHISTLE:'点自己动物'};
+showHint(tips[card.itemKey]||'选择目标');render();return;
+}
+if(G.selHand===idx)G.selHand=null;
+else{G.selHand=idx;G.selUnit=null;G.itemPhase=null;hideHint();}
+render();
+});
+el.appendChild(c);
+});
+}
+}function renderStats(){
+document.getElementById('p1Hp').textContent=G.players[1].hp;
+document.getElementById('p2Hp').textContent=G.players[2].hp;
+document.getElementById('p1Bones').textContent=G.players[1].bones;
+document.getElementById('p2Bones').textContent=G.players[2].bones;
+}
+
+function renderTurnInfo(){
+const el=document.getElementById('turnInfo');
+if(G.gameOver)el.textContent='🏆 玩家'+G.winner+'胜利！';
+else el.textContent='玩家'+G.turn+' · 第'+G.round+'轮';
+document.getElementById('p1Info').classList.toggle('active',!G.gameOver&&G.turn===1);
+document.getElementById('p2Info').classList.toggle('active',!G.gameOver&&G.turn===2);
+}
+
+function renderButtons(){
+const p=G.players[G.turn];
+document.getElementById('drawBtn').disabled=G.gameOver||p.bones<EXTRA_DRAW_COST;
+document.getElementById('itemDrawBtn').disabled=G.gameOver||p.bones<ITEM_DRAW_COST;
+document.getElementById('endTurnBtn').disabled=G.gameOver;
+let canSac=false;
+if(G.selUnit){const u=G.board[G.selUnit.row][G.selUnit.col];if(u&&u.owner===G.turn&&u.card.canSacrifice)canSac=true;}
+document.getElementById('sacrificeBtn').disabled=!canSac||G.gameOver;
+}document.addEventListener('click',(e)=>{
+if(G.itemPhase!=='balloonAnimal')return;
+const el=e.target.closest('#p1Hand .card-mini, #p2Hand .card-mini');
+if(!el)return;
+const parent=el.parentElement;
+const pid=parent.id==='p1Hand'?1:2;
+if(pid!==G.turn)return;
+const idx=Array.from(parent.children).indexOf(el);
+const card=G.players[pid].hand[idx];
+if(!card||card.isItem)return;
+G.itemExtra=idx;G.itemPhase='balloonTarget';
+showHint('点场上空格空降');
+});
+
+document.getElementById('rulesBtn').addEventListener('click',()=>document.getElementById('rulesModal').classList.remove('hidden'));
+document.getElementById('restartBtn').addEventListener('click',()=>{if(confirm('重新开始？'))initGame();});
+document.getElementById('drawBtn').addEventListener('click',()=>extraDraw(G.turn));
+document.getElementById('itemDrawBtn').addEventListener('click',()=>itemDraw(G.turn));
+document.getElementById('sacrificeBtn').addEventListener('click',()=>{if(G.selUnit)sacrifice(G.selUnit.row,G.selUnit.col);});
+document.getElementById('endTurnBtn').addEventListener('click',()=>endTurn());
+
+const modeBtn=document.getElementById('modeBtn');
+const modeModal=document.getElementById('modeModal');
+function updateModeBtn(){
+if(AI_MODE==='off'){modeBtn.textContent='👥 双人';modeBtn.style.background='#b99b6b';modeBtn.style.borderBottomColor='#7a5e40';}
+else if(AI_MODE==='easy'){modeBtn.textContent='🤖 简单';modeBtn.style.background='#4a9eff';modeBtn.style.borderBottomColor='#2a6ebf';}
+else{modeBtn.textContent='🧠 困难';modeBtn.style.background='#e05a5a';modeBtn.style.borderBottomColor='#a03333';}
+}
+modeBtn.addEventListener('click',()=>modeModal.classList.remove('hidden'));
+modeModal.addEventListener('click',(e)=>{
+const t=e.target.closest('button');if(!t)return;
+const m=t.dataset.mode;
+if(m==='cancel'){modeModal.classList.add('hidden');return;}
+AI_MODE=m;AI_RUNNING=false;
+modeModal.classList.add('hidden');updateModeBtn();initGame();
+});function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+function getThreats(){
+const t=[];
+for(let r=0;r<ROWS;r++){
+const u=G.board[r][3];
+if(u&&u.owner===1&&G.board[r][4]===null)t.push({row:r,atk:u.atk,hp:u.hp});
+}
+return t;
+}
+function isAiSafe(){
+if(G.players[2].hp<=5)return false;
+for(let r=0;r<ROWS;r++){
+const u=G.board[r][3];
+if(u&&u.owner===1&&G.board[r][4]===null)return false;
+}
+return true;
+}
+
+async function aiPlayCards(){
+let safety=0;
+while(safety++<12&&!G.gameOver&&G.turn===2){
+const p=G.players[2];
+const threats=getThreats();
+if(threats.length>0){
+const danger=p.hp<=5;
+let sacIdx=-1;
+if(danger){
+sacIdx=p.hand.findIndex(c=>!c.isItem&&c.cost<=p.bones);
+}else{
+sacIdx=p.hand.findIndex(c=>c.canSacrifice&&c.cost<=p.bones&&c.type==='SQUIRREL');
+if(sacIdx<0)sacIdx=p.hand.findIndex(c=>!c.isItem&&c.cost<=p.bones&&c.cost<=1&&c.type!=='BLACKCAT');
+if(sacIdx<0)sacIdx=p.hand.findIndex(c=>!c.isItem&&c.cost<=p.bones&&c.type!=='BLACKCAT');
+if(sacIdx<0)sacIdx=p.hand.findIndex(c=>!c.isItem&&c.cost<=p.bones);
+}
+if(sacIdx>=0){
+threats.sort((a,b)=>b.atk-a.atk);
+let placed=false;
+for(const t of threats){if(!G.board[t.row][4]){playCard(2,sacIdx,t.row);placed=true;break;}}
+if(placed){await sleep(450);continue;}
+}
+}
+const emptyRows=[];
+for(let r=0;r<ROWS;r++)if(G.board[r][4]===null)emptyRows.push(r);
+if(emptyRows.length===0)break;
+let candidateRows=emptyRows;
+if(AI_MODE==='hard'){
+const ar=emptyRows.filter(r=>{const u=G.board[r][3];return u&&u.owner===1;});
+if(ar.length>0)candidateRows=ar;
+}
+const myRows=new Set();
+for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){const u=G.board[r][c];if(u&&u.owner===2)myRows.add(r);}
+const noUnit=candidateRows.filter(r=>!myRows.has(r));
+if(noUnit.length>0)candidateRows=noUnit;
+if(candidateRows.length===0)candidateRows=emptyRows;
+let mySq=0;
+for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){const u=G.board[r][c];if(u&&u.owner===2&&u.card.canSacrifice)mySq++;}
+let bestIdx=-1,bestCost=-1;
+for(let i=0;i<p.hand.length;i++){
+const c=p.hand[i];
+if(c.isItem||c.canSacrifice||c.type==='GHOUL')continue;
+if(c.cost<=p.bones&&c.cost>bestCost){bestIdx=i;bestCost=c.cost;}
+}
+if(bestIdx<0){
+if(mySq>=2)break;
+const s=p.hand.findIndex(c=>c.canSacrifice&&c.cost<=p.bones&&!c.isItem);
+if(s<0)break;
+bestIdx=s;
+}
+if(AI_MODE==='hard'&&p.bones<4&&!p.hand[bestIdx].canSacrifice){
+const a=p.hand.findIndex(c=>c.cost<=p.bones&&c.cost>=2&&!c.canSacrifice&&!c.isItem);
+if(a>=0)bestIdx=a;
+}
+const row=candidateRows[Math.floor(Math.random()*candidateRows.length)];
+playCard(2,bestIdx,row);
+await sleep(450);
+}
+}function evaluateUnit(r,c){
+const u=G.board[r][c];
+if(!u||u.owner!==2||u.hasMoved||u.netted)return null;
+
+// 螳螂：斜向攻击/移动
+if(u.card.doubleStrike){
+const fdc=-1;
+const cL=c+fdc;
+if(cL<1)return null;
+const upL=(r-1>=0)?G.board[r-1][cL]:null;
+const upR=(r+1<ROWS)?G.board[r+1][cL]:null;
+let bestScore=0,bestTarget=null;
+if(upL&&upL.owner===1){const sc=30+upL.atk*8+(upL.hp<=1?60:0);if(sc>bestScore){bestScore=sc;bestTarget={r:r-1,c:cL};}}
+if(upR&&upR.owner===1){const sc=30+upR.atk*8+(upR.hp<=1?60:0);if(sc>bestScore){bestScore=sc;bestTarget={r:r+1,c:cL};}}
+if(bestTarget)return{row:r,col:c,score:bestScore+20,action:'attackBird',tr:bestTarget.r,tc:bestTarget.c};
+const canL=(r-1>=0)&&!upL;
+const canR=(r+1<ROWS)&&!upR;
+if(!canL&&!canR)return null;
+let chosen=null;
+if(canL&&canR)chosen=Math.random()<0.5?{nr:r-1,nc:cL}:{nr:r+1,nc:cL};
+else if(canL)chosen={nr:r-1,nc:cL};
+else chosen={nr:r+1,nc:cL};
+let danger=false;
+for(let cc=chosen.nc-1;cc>=0;cc--){
+const t=G.board[chosen.nr][cc];
+if(t){if(t.owner===1&&t.atk>=u.hp)danger=true;break;}
+}
+if(danger&&Math.random()<0.5)return null;
+return{row:r,col:c,score:12,action:'mantisMove',nr:chosen.nr,nc:chosen.nc};
+}
+
+// 飞鸟
+if(u.card.range===2){
+const canHitPlayer=(c===2&&G.board[r][0]===null);
+if(canHitPlayer&&AI_MODE==='hard'){
+const targets=[];
+const t1=(c>=1)?G.board[r][c-1]:null;
+const t2=(c>=2)?G.board[r][c-2]:null;
+if(t1&&t1.owner===1)targets.push({tr:r,tc:c-1,unit:t1});
+if(t2&&t2.owner===1)targets.push({tr:r,tc:c-2,unit:t2});
+const inDanger=(t1&&t1.owner===1);
+if(inDanger&&targets.length>0){
+let kill=null;
+for(const tg of targets){if(u.atk>=tg.unit.hp){kill=tg;break;}}
+if(kill)return{row:r,col:c,score:220,action:'attackBird',tr:kill.tr,tc:kill.tc};
+if(Math.random()<0.5)return{row:r,col:c,score:250,action:'attackPlayer'};
+const b=targets[0];
+return{row:r,col:c,score:240,action:'attackBird',tr:b.tr,tc:b.tc};
+}
+}
+if(c===2&&G.board[r][0]===null)return{row:r,col:c,score:180+u.atk*10,action:'attackPlayer'};
+if(c>=1&&G.board[r][c-1]&&G.board[r][c-1].owner===1){
+const t=G.board[r][c-1];
+return{row:r,col:c,score:60+t.atk*8,action:'attackBird',tr:r,tc:c-1};
+}
+if(c>=2&&G.board[r][c-2]&&G.board[r][c-2].owner===1){
+const t=G.board[r][c-2];
+return{row:r,col:c,score:60+t.atk*8,action:'attackBird',tr:r,tc:c-2};
+}
+}// 野牛冲撞（预判）
+if(u.type==='BISON'&&u.chargeReady){
+const nc1=c-1,nc2=c-2;
+if(nc1>=1){
+const first=G.board[r][nc1];
+if(first&&first.owner===1)return{row:r,col:c,score:90+first.atk*6,action:'bisonCharge'};
+if(!first&&nc2>=0&&G.board[r][nc2]&&G.board[r][nc2].owner===1)return{row:r,col:c,score:85,action:'bisonCharge'};
+}
+}
+
+// 螃蟹侧向攻击
+if(u.card.sideMove){
+let bestScore=0,bestTarget=null;
+const front=(c-1>=0)?G.board[r][c-1]:null;
+if(front&&front.owner===1){const kill=u.atk>=front.hp;let sc=50+front.atk*8;if(kill)sc+=60;if(sc>bestScore){bestScore=sc;bestTarget={r:r,c:c-1};}}
+const up=(r-1>=0)?G.board[r-1][c]:null;
+if(up&&up.owner===1){const kill=u.atk>=up.hp;let sc=45+up.atk*8;if(kill)sc+=60;if(sc>bestScore){bestScore=sc;bestTarget={r:r-1,c:c};}}
+const down=(r+1<ROWS)?G.board[r+1][c]:null;
+if(down&&down.owner===1){const kill=u.atk>=down.hp;let sc=45+down.atk*8;if(kill)sc+=60;if(sc>bestScore){bestScore=sc;bestTarget={r:r+1,c:c};}}
+if(bestTarget)return{row:r,col:c,score:bestScore,action:'attackUnit',tr:bestTarget.r,tc:bestTarget.c};
+}
+
+// 黑猫：正前有敌人打，危险躲避，否则不动
+if(u.card.type==='BLACKCAT'){
+if(c>0&&G.board[r][c-1]&&G.board[r][c-1].owner===1){
+return{row:r,col:c,score:60,action:'attackUnit'};
+}
+let inDanger=false;
+if(r-1>=0){const t=G.board[r-1][c-1];if(t&&t.owner===1&&t.card&&t.card.doubleStrike)inDanger=true;}
+if(r+1<ROWS){const t=G.board[r+1][c-1];if(t&&t.owner===1&&t.card&&t.card.doubleStrike)inDanger=true;}
+if(c-1>=0){const t=G.board[r][c-1];if(t&&t.owner===1&&t.card&&t.card.sideMove)inDanger=true;}
+if(c+1<COLS){const t=G.board[r][c+1];if(t&&t.owner===1&&t.card&&t.card.sideMove)inDanger=true;}
+if(inDanger&&c>1&&G.board[r][c-1]===null)return{row:r,col:c,score:50,action:'move'};
+return null;
+}
+
+// 普通单位：打脸 → 打敌人 → 前进（含换血）
+if(c===1&&G.board[r][0]===null)return{row:r,col:c,score:200+u.atk*10,action:'attackPlayer'};
+if(c>0&&G.board[r][c-1]){
+const t=G.board[r][c-1];
+if(t.owner===1){
+const kill=u.atk>=t.hp;
+let sc=40;if(kill)sc+=60;sc+=t.atk*8;
+const willDie=(t.atk>=u.hp);
+if(willDie)sc+=100;
+return{row:r,col:c,score:sc,action:'attackUnit'};
+}
+}
+if(c>1&&G.board[r][c-1]===null){
+if(AI_MODE==='hard'){
+if(c-2>=0){
+const ta=G.board[r][c-2];
+if(ta&&ta.owner===1){
+const willDie=(ta.atk>=u.hp);
+if(willDie)return{row:r,col:c,score:80,action:'move'};
+if(ta.atk>=u.hp){if(Math.random()<0.8)return null;}
+}
+}
+}
+return{row:r,col:c,score:15,action:'move'};
+}
+return null;
+}function aiClearBlockingSquirrels(){
+for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
+const u=G.board[r][c];
+if(!u||u.owner!==2||!u.card.canSacrifice)continue;
+if(c>0&&G.board[r][c-1]&&G.board[r][c-1].owner===1)continue;
+if(c+1<COLS){const b=G.board[r][c+1];if(b&&b.owner===2&&b.atk>0){sacrifice(r,c);return true;}}
+}
+return false;
+}
+
+async function aiAct(){
+let cleared=0;
+while(cleared++<5&&!G.gameOver&&G.turn===2){if(!aiClearBlockingSquirrels())break;await sleep(300);}
+let safety=0;
+while(safety++<15&&!G.gameOver&&G.turn===2){
+const acts=[];
+for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){const ev=evaluateUnit(r,c);if(ev&&ev.score>0)acts.push(ev);}
+if(acts.length===0)break;
+acts.sort((a,b)=>b.score-a.score);
+const b=acts[0];
+if(b.score<=0)break;
+if(b.action==='attackPlayer')attackPlayer(b.row,b.col);
+else if(b.action==='attackUnit'){
+const tR=(b.tr!==undefined)?b.tr:b.row;
+const tC=(b.tc!==undefined)?b.tc:b.col-1;
+attackUnit(b.row,b.col,tR,tC);
+}
+else if(b.action==='attackBird')attackUnit(b.row,b.col,b.tr,b.tc);
+else if(b.action==='bisonCharge')bisonCharge(b.row,b.col);
+else if(b.action==='mantisMove')moveUnit(b.row,b.col,b.nr-b.row,b.nc-b.col);
+else if(b.action==='crabMove')moveUnit(b.row,b.col,b.nr-b.row,0);
+else if(b.action==='move'){
+const nr=b.row,nc=b.col-1;
+if(nc<1)continue;
+if(G.board[nr][nc]!==null)continue;
+moveUnit(b.row,b.col,0,-1);
+}
+await sleep(500);
+}
+}
+
+function aiSacrificeSquirrels(){
+const p=G.players[2];
+if(p.bones>=3)return;
+for(let r=0;r<ROWS;r++){const u=G.board[r][3];if(u&&u.owner===1)return;}
+for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
+const u=G.board[r][c];
+if(u&&u.owner===2&&u.card.canSacrifice&&u.type!=='BLACKCAT'){sacrifice(r,c);return;}
+}
+}async function aiUseItems(){
+if(AI_MODE!=='hard')return;
+const p=G.players[2];
+const findItem=(k)=>p.hand.findIndex(c=>c.isItem&&c.itemKey===k);
+let used=0;
+if(used<2&&p.bones>=1&&G.players[1].hp<=3){const i=findItem('BOMB');if(i>=0){applyItemInstant(2,i);used++;await sleep(400);}}
+if(used<2&&p.bones>=1){const i=findItem('GUN');if(i>=0){
+let best=null,bs=-1;
+for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){const u=G.board[r][c];if(u&&u.owner===1){let sc=u.atk*10;if(u.hp<=5)sc+=100;if(sc>bs){bs=sc;best={r,c};}}}
+if(best&&bs>=30){applyItemTarget(2,i,best.r,best.c);used++;await sleep(400);}
+}}
+if(used<2&&p.bones>=1){const i=findItem('NET');if(i>=0){
+let best=null,ba=1;
+for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){const u=G.board[r][c];if(u&&u.owner===1&&!u.netted&&u.atk>=2&&u.atk>ba){ba=u.atk;best={r,c};}}
+if(best){applyItemTarget(2,i,best.r,best.c);used++;await sleep(400);}
+}}
+if(used<2&&p.bones>=1){const i=findItem('FENCE');if(i>=0){
+for(let r=0;r<ROWS;r++){const u=G.board[r][3];if(u&&u.owner===1&&G.board[r][4]===null){applyItemTarget(2,i,r,4);used++;await sleep(400);break;}}
+}}
+if(used<2&&p.bones>=1&&p.hp<=5){const i=findItem('MEDICINE');if(i>=0){applyItemInstant(2,i);used++;await sleep(350);}}
+if(used<2&&p.bones>=1){const i=findItem('FEED');if(i>=0){
+let best=null,bs=0;
+for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
+const u=G.board[r][c];if(!u||u.owner!==2||!u.hasMoved||u.isFence)continue;
+let sc=0;
+if(c===1&&G.board[r][0]===null)sc=100+u.atk;
+else if(c>0&&G.board[r][c-1]&&G.board[r][c-1].owner===1)sc=50+u.atk;
+if(sc>bs){bs=sc;best={r,c};}
+}
+if(best){applyItemTarget(2,i,best.r,best.c);used++;await sleep(400);}
+}}
+if(used<2&&p.bones>=1){const i=findItem('TRAP');if(i>=0){
+let placed=false;
+for(let r=0;r<ROWS&&!placed;r++)for(let c=1;c<=3&&!placed;c++){
+const u=G.board[r][c];
+if(u&&u.owner===1){
+const fc=c-1;
+if(fc>=0&&!G.board[r][fc]&&!G.traps.some(t=>t.row===r&&t.col===fc)){applyItemTarget(2,i,r,fc);used++;placed=true;await sleep(400);}
+}
+}}
+}
+if(used<2&&p.bones>=1){const i=findItem('WHISTLE');if(i>=0){
+for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){const u=G.board[r][c];if(u&&u.owner===2&&!u.isFence&&u.hp===1&&u.atk>=1){applyItemTarget(2,i,r,c);used++;await sleep(400);break;}}
+}}
+if(used<2&&p.bones>=4){const i=findItem('BALLOON');if(i>=0){
+let ai=-1,bc=-1;
+p.hand.forEach((c,idx)=>{if(!c.isItem&&c.cost<=p.bones-1&&c.cost>bc){bc=c.cost;ai=idx;}});
+if(ai>=0){
+const targets=[];
+for(let r=0;r<ROWS;r++)for(let c=1;c<=3;c++)if(!G.board[r][c])targets.push({r,c});
+if(targets.length>0){
+const realIdx=G.players[2].hand.indexOf(p.hand[ai]);
+const realItem=G.players[2].hand.indexOf(p.hand[i]);
+if(realIdx>=0&&realItem>=0){applyBalloon(2,realItem,realIdx,targets[0].r,targets[0].c);used++;await sleep(400);render();}
+}
+}
+}}
+}async function aiDoTurn(){
+if(G.gameOver||G.turn!==2)return;
+await sleep(500);
+if(AI_MODE==='hard'&&isAiSafe()&&G.players[2].bones>5&&G.players[2].hand.length<9){
+if(Math.random()<0.7){itemDraw(2);await sleep(350);}
+}
+if(AI_MODE==='hard')await aiUseItems();
+await aiPlayCards();
+await aiAct();
+aiSacrificeSquirrels();
+await sleep(400);
+if(!G.gameOver&&G.turn===2)endTurn();
+}
+
+setInterval(()=>{
+if(AI_MODE==='off')return;
+if(AI_RUNNING)return;
+if(!G||G.gameOver)return;
+if(G.turn!==2)return;
+AI_RUNNING=true;
+aiDoTurn().catch(e=>console.error('AI错误:',e)).finally(()=>{AI_RUNNING=false;});
+},600);
+
+(function(){
+let audioCtx=null;
+function ensureAudio(){
+if(!audioCtx){try{audioCtx=new (window.AudioContext||window.webkitAudioContext)();}catch(e){}}
+if(audioCtx&&audioCtx.state==='suspended')audioCtx.resume();
+return audioCtx;
+}
+document.addEventListener('touchstart',ensureAudio,{once:true});
+document.addEventListener('click',ensureAudio,{once:true});
+window.playTone=function(freq,dur,type,vol,slideTo){
+const ctx=ensureAudio();if(!ctx)return;
+const osc=ctx.createOscillator();const gain=ctx.createGain();
+osc.type=type||'square';
+osc.frequency.setValueAtTime(freq,ctx.currentTime);
+if(slideTo)osc.frequency.exponentialRampToValueAtTime(slideTo,ctx.currentTime+dur);
+gain.gain.setValueAtTime(vol||0.15,ctx.currentTime);
+gain.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+dur);
+osc.connect(gain);gain.connect(ctx.destination);
+osc.start(ctx.currentTime);osc.stop(ctx.currentTime+dur);
+};
+window.SFX={
+play:()=>{playTone(660,0.08,'square',0.12);setTimeout(()=>playTone(880,0.06,'square',0.10),40);},
+draw:()=>{playTone(400,0.10,'sine',0.12,900);},
+attack:()=>{playTone(180,0.12,'sawtooth',0.18,80);setTimeout(()=>playTone(90,0.10,'square',0.14),50);},
+hit:()=>{playTone(120,0.15,'sawtooth',0.16,60);},
+death:()=>{playTone(500,0.20,'sine',0.14,100);},
+win:()=>{[523,659,784,1046].forEach((f,i)=>setTimeout(()=>playTone(f,0.15,'square',0.13),i*100));},
+lose:()=>{[400,300,200].forEach((f,i)=>setTimeout(()=>playTone(f,0.20,'sine',0.14),i*120));},
+click:()=>{playTone(700,0.04,'square',0.08);},
+sac:()=>{playTone(800,0.10,'sine',0.12,300);},
+item:()=>{playTone(900,0.10,'sine',0.13,1400);},
+charge:()=>{playTone(140,0.15,'sawtooth',0.20,60);setTimeout(()=>playTone(100,0.12,'square',0.18),90);},
+thorn:()=>{playTone(100,0.10,'square',0.14,70);}
+};
+const _playCard=playCard;
+playCard=function(){const r=_playCard.apply(this,arguments);if(r)SFX.play();return r;};
+const _extraDraw=extraDraw;
+extraDraw=function(){const r=_extraDraw.apply(this,arguments);if(r)SFX.draw();return r;};
+const _itemDraw=itemDraw;
+itemDraw=function(){const r=_itemDraw.apply(this,arguments);if(r){SFX.item();setTimeout(SFX.draw,80);}return r;};
+const _sacrifice=sacrifice;
+sacrifice=function(){const r=_sacrifice.apply(this,arguments);if(r)SFX.sac();return r;};
+const _moveUnit=moveUnit;
+moveUnit=function(){const r=_moveUnit.apply(this,arguments);if(r)SFX.click();return r;};
+const _attackUnit=attackUnit;
+attackUnit=function(){
+const tr=arguments[2],tc=arguments[3];
+const tb=G.board[tr]?G.board[tr][tc]:null;
+const ab=G.board[arguments[0]]?G.board[arguments[0]][arguments[1]]:null;
+const ahp=ab?ab.hp:0;
+const r=_attackUnit.apply(this,arguments);
+if(r){
+SFX.attack();
+setTimeout(SFX.hit,60);
+if(tb&&tb.hp<=0)setTimeout(SFX.death,200);
+if(tb&&tb.card&&tb.card.thorn&&ab&&ab.hp<ahp)setTimeout(SFX.thorn,200);
+}
+return r;
+};
+const _bisonCharge=bisonCharge;
+bisonCharge=function(){
+const r=_bisonCharge.apply(this,arguments);
+if(r){SFX.charge();setTimeout(SFX.hit,100);}
+return r;
+};
+const _attackPlayer=attackPlayer;
+attackPlayer=function(){
+const wo=G.gameOver;
+const r=_attackPlayer.apply(this,arguments);
+if(r){SFX.attack();setTimeout(SFX.hit,60);if(!wo&&G.gameOver)setTimeout(()=>{G.winner===1?SFX.win():SFX.lose();},400);}
+return r;
+};
+const _endTurn=endTurn;
+endTurn=function(){SFX.click();_endTurn.apply(this,arguments);};
+function rebind(id,fn){
+const el=document.getElementById(id);if(!el)return;
+const c=el.cloneNode(true);el.parentNode.replaceChild(c,el);c.addEventListener('click',fn);
+}
+rebind('drawBtn',()=>{extraDraw(G.turn);});
+rebind('itemDrawBtn',()=>{itemDraw(G.turn);});
+rebind('sacrificeBtn',()=>{if(G.selUnit)sacrifice(G.selUnit.row,G.selUnit.col);});
+rebind('endTurnBtn',()=>{endTurn();});
+rebind('restartBtn',()=>{SFX.click();if(confirm('重新开始？'))initGame();});
+rebind('rulesBtn',()=>{SFX.click();document.getElementById('rulesModal').classList.remove('hidden');});
+rebind('modeBtn',()=>{SFX.click();document.getElementById('modeModal').classList.remove('hidden');});
+})();updateModeBtn();
+initGame();
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  });
+}
+</script>
+</body>
+</html>

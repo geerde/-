@@ -1,0 +1,14 @@
+{
+  "name": "荒野兽争",
+  "short_name": "荒野兽争",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "portrait",
+  "background_color": "#1a2a1f",
+  "theme_color": "#3a2e1e",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
