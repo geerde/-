@@ -1,4 +1,4 @@
-const CACHE = 'wildbeast-v1';
+const CACHE = 'wildbeast-v2';
 const FILES = ['./', './index.html', './manifest.json'];
 
 self.addEventListener('install', (e) => {
