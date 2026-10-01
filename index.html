@@ -1418,7 +1418,60 @@ if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('sw.js').catch(() => {});
   });
-}
+}/* ========== 补丁：手牌献祭（含音效） ========== */
+(function(){
+  const sacBtn = document.getElementById('sacrificeBtn');
+  if(!sacBtn) return;
+
+  const _renderButtons = renderButtons;
+  renderButtons = function(){
+    _renderButtons.apply(this, arguments);
+    const btn = document.getElementById('sacrificeBtn');
+    if(!btn) return;
+    if(!G.selUnit && G.selHand !== null && G.selHand !== undefined){
+      const card = G.players[G.turn].hand[G.selHand];
+      if(card && !card.isItem){
+        btn.disabled = false;
+        btn.textContent = '献祭手牌';
+      } else {
+        btn.textContent = '献祭';
+      }
+    } else {
+      btn.textContent = '献祭';
+    }
+  };
+
+  const newBtn = sacBtn.cloneNode(true);
+  sacBtn.parentNode.replaceChild(newBtn, sacBtn);
+  newBtn.id = 'sacrificeBtn';
+  newBtn.addEventListener('click', ()=>{
+    if(G.gameOver) return;
+    // 优先场上
+    if(G.selUnit){
+      const u = G.board[G.selUnit.row][G.selUnit.col];
+      if(u && u.owner === G.turn && u.card.canSacrifice){
+        sacrifice(G.selUnit.row, G.selUnit.col);
+        return;
+      }
+    }
+    // 手牌
+    if(G.selHand !== null && G.selHand !== undefined){
+      const p = G.players[G.turn];
+      const card = p.hand[G.selHand];
+      if(card && !card.isItem){
+        p.hand.splice(G.selHand, 1);
+        p.bones += SACRIFICE_BONES;
+        G.selHand = null;
+        // 音效
+        if(window.SFX && window.SFX.sac) window.SFX.sac();
+        render();
+      }
+    }
+  });
+
+  console.log('✅ 手牌献祭补丁（含音效）已加载');
+})();
+/* ========== 补丁结束 ========== */
 </script>
 </body>
 </html>
